@@ -86,6 +86,7 @@ import hudson.model.Descriptor;
 import hudson.model.EnvironmentSpecific;
 import hudson.model.JDK;
 import hudson.model.Node;
+import hudson.model.Result;
 import hudson.remoting.VirtualChannel;
 import hudson.slaves.NodeSpecific;
 import hudson.slaves.SlaveComputer;
@@ -1248,6 +1249,23 @@ public class ZAPDriver extends AbstractDescribableImpl<ZAPDriver> implements Ser
         }
         Utils.lineBreak(listener);
         return buildSuccess;
+    }
+
+    public Result executeZAPPostBuild(BuildListener listener, FilePath workspace) {
+        Result buildStatus = Result.SUCCESS;
+        ClientApi clientApi = new ClientApi(this.evaluatedZapHost, this.evaluatedZapPort, API_KEY);
+        Utils.lineBreak(listener);
+//        Utils.loggerMessage(listener, 0, "[{0}] MANAGE POST-BUILD THRESHOLD(S) ENABLED [ {1} ]", Utils.ZAP, String.valueOf(this.buildThresholds).toUpperCase());
+//        if(this.buildThresholds) try {
+//            buildStatus = ManageThreshold(listener, clientApi, this.hThresholdValue, this.hSoftValue, this.mThresholdValue, this.mSoftValue, this.lThresholdValue, this.lSoftValue, this.iThresholdValue, this.iSoftValue, this.cumulValue);
+//        } catch (ClientApiException e) {
+//            e.printStackTrace();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+        return buildStatus;
+
     }
 
     /**

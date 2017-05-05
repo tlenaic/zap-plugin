@@ -270,6 +270,7 @@ public class ZAPBuilder extends Builder {
     /** Method called when the build is launching */
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) {
+        listener.getLogger().println("zaproxy: " + zaproxy);
         if (!startZAPFirst) try {
             Utils.lineBreak(listener);
             Utils.loggerMessage(listener, 0, "[{0}] START BUILD STEP", Utils.ZAP);
@@ -334,6 +335,11 @@ public class ZAPBuilder extends Builder {
             listener.error(ExceptionUtils.getStackTrace(e));
             return false;
         }
+
+        build.addAction(new MyAction());
+        MyAction abs = build.getAction(MyAction.class);
+        abs.setHello("derpyGogi");
+        
         return res;
     }
 
