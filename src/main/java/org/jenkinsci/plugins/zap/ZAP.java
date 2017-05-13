@@ -57,12 +57,13 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
     private String host;
     private int port;
     private List<String> command = new ArrayList<String>();
-
+    private ArrayList<ZAPCmdLine> commandLineArgs;
+    
     /* ZAP executable files */
     private static final String ZAP_PROG_NAME_BAT = "zap.bat";
     private static final String ZAP_PROG_NAME_SH = "zap.sh";
 
-    public ZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher, int timeout, String installationEnvVar, String homeDir, String host, int port) {
+    public ZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher, int timeout, String installationEnvVar, String homeDir, String host, int port, ArrayList<ZAPCmdLine> commandLineArgs) {
         this.build = build;
         this.listener = listener;
         this.launcher = launcher;
@@ -71,6 +72,7 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
         this.homeDir = homeDir;
         this.host = host;
         this.port = port;
+        this.commandLineArgs = commandLineArgs;
         System.out.println(this.toString());
     }
 
@@ -134,16 +136,38 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
     }
 
     public void setCommand() throws IOException, InterruptedException {
-        command.add(getAppPath().getRemote());
-        command.add(CMD_LINE_DAEMON);
-        command.add(CMD_LINE_HOST);
-        command.add(host);
-        command.add(CMD_LINE_PORT);
-        command.add(Integer.toString(port));
-        command.add(CMD_LINE_CONFIG);
-        command.add(CMD_LINE_API_KEY + "=" + API_KEY);
-        command.add(CMD_LINE_DIR);
-        command.add(homeDir);
+        this.command.add(getAppPath().getRemote());
+        this.command.add(CMD_LINE_DAEMON);
+        this.command.add(CMD_LINE_HOST);
+        this.command.add(host);
+        this.command.add(CMD_LINE_PORT);
+        this.command.add(Integer.toString(port));
+        this.command.add(CMD_LINE_CONFIG);
+        this.command.add(CMD_LINE_API_KEY + "=" + API_KEY);
+        this.command.add(CMD_LINE_DIR);
+        this.command.add(homeDir);
+        
+        System.out.println("this.command: " + this.command.size());
+        System.out.println("this.commandLineArgs: " + this.commandLineArgs.size());
+        /* Adds command line arguments if it's provided */
+        if (!this.commandLineArgs.isEmpty()) addZapCmdLine(this.command, this.commandLineArgs);
+    }
+
+    /**
+     * Add list of command line to the list in param
+     *
+     * @param list
+     *            of type List<String>: the list to attach ZAP command line to.
+     * @param cmdList
+     *            of type ArrayList<ZAPCmdLine>: the list of ZAP command line options and their values.
+     */
+    private void addZapCmdLine(List<String> list, ArrayList<ZAPCmdLine> cmdList) {
+        System.out.println("extra: " + cmdList.size());
+        System.out.println("original: " + list.size());
+        for (ZAPCmdLine zapCmd : cmdList) {
+            if (zapCmd.getCmdLineOption() != null && !zapCmd.getCmdLineOption().isEmpty()) list.add(zapCmd.getCmdLineOption());
+            if (zapCmd.getCmdLineValue() != null && !zapCmd.getCmdLineValue().isEmpty()) list.add(zapCmd.getCmdLineValue());
+        }
     }
 
     public void setCommandLineArgs(String key, String value) {

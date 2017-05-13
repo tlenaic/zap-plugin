@@ -344,7 +344,7 @@ public class ZAPBuilder extends Builder {
         zapInterface.setTimeout(zaproxy.getTimeout());
         zapInterface.setHost(zaproxy.getEvaluatedZapHost());
         zapInterface.setPort(zaproxy.getEvaluatedZapPort());
-        
+        zapInterface.setCommandLineArgs(zaproxy.getEvaluatedCmdLinesZap());
         return res;
     }
 

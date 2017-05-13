@@ -2805,11 +2805,11 @@ public class ZAPDriver extends AbstractDescribableImpl<ZAPDriver> implements Ser
 
     private final ArrayList<ZAPCmdLine> cmdLinesZAP; /* List of all ZAP command lines specified by the user ArrayList because it needs to be Serializable (whereas List is not Serializable). */
 
-    public List<ZAPCmdLine> getCmdLinesZAP() { return cmdLinesZAP; }
+    public ArrayList<ZAPCmdLine> getCmdLinesZAP() { return cmdLinesZAP; }
 
     private ArrayList<ZAPCmdLine> evaluatedCmdLinesZap; /* Todo */
 
-    public List<ZAPCmdLine> getEvaluatedCmdLinesZap() { return evaluatedCmdLinesZap; }
+    public ArrayList<ZAPCmdLine> getEvaluatedCmdLinesZap() { return evaluatedCmdLinesZap; }
 
     public void setEvaluatedCmdLinesZap(ArrayList<ZAPCmdLine> evaluatedCmdLinesZap) { this.evaluatedCmdLinesZap = evaluatedCmdLinesZap; }
 

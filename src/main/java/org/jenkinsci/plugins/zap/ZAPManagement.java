@@ -118,21 +118,20 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
     }
 
     public Proc startZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher) throws IllegalArgumentException, IOException, InterruptedException {
-        ZAP zap = new ZAP(build, listener, launcher, this.getTimeout(), this.getInstallationEnvVar(), this.getHomeDir(), this.getHost(), this.getPort());
+        ZAP zap = new ZAP(build, listener, launcher, this.getTimeout(), this.getInstallationEnvVar(), this.getHomeDir(), this.getHost(), this.getPort(), this.getCommandLineArgs());
 
         this.zapInstallationDir = zap.getInstallationDir();
         zap.checkParams(this.zapInstallationDir);
 
-        FilePath zapPathWithProgName = zap.getAppPath();
-        Utils.loggerMessage(listener, 0, "[{0}] CONFIGURE RUN COMMANDS for [ {1} ]", Utils.ZAP, zapPathWithProgName.getRemote());
-
+        System.out.println("startZAP list -------------");
+        for(int i = 0; i < this.getCommandLineArgs().size(); i++) {
+            System.out.println(this.getCommandLineArgs().get(i));
+        }
+        
         /* Command to start ZAProxy with parameters */
-        zap.setCommand(zapPathWithProgName.getRemote());
-        zap.setCommandLineArgs("HOST", this.getHost());
-        zap.setCommandLineArgs("PORT", Integer.toString(this.getPort()));
-        zap.setCommandLineArgs("HOME", this.getHomeDir());
+        zap.setCommand();
 
-        System.out.println("list -------------");
+        System.out.println("new list -------------");
         for(int i = 0; i < zap.getCommand().size(); i++) {
             System.out.println(zap.getCommand().get(i));
         }
@@ -681,4 +680,10 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
     public void setPort(int port) {
         this.port = port;
     }
+
+    private ArrayList<ZAPCmdLine> commandLineArgs; /* List of all ZAP command lines specified by the user ArrayList because it needs to be Serializable (whereas List is not Serializable). */
+
+    public ArrayList<ZAPCmdLine> getCommandLineArgs() { return commandLineArgs; }
+
+    public void setCommandLineArgs(ArrayList<ZAPCmdLine> commandLineArgs) { this.commandLineArgs = commandLineArgs; }
 }

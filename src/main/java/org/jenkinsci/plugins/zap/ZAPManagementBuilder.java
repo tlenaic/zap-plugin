@@ -94,11 +94,17 @@ public class ZAPManagementBuilder extends Recorder {
         System.out.println("my action home dir: " + zapInterface.getHomeDir());
         System.out.println("my action host: " + zapInterface.getHost());
         System.out.println("my action port: " + zapInterface.getPort());
+        System.out.println("my action command line args extra: " + zapInterface.getCommandLineArgs().size());
+        System.out.println("new list -------------");
+        for(int i = 0; i < zapInterface.getCommandLineArgs().size(); i++) {
+            System.out.println(zapInterface.getCommandLineArgs().get(i));
+        }
         this.management.setTimeout(zapInterface.getTimeout());
         this.management.setInstallationEnvVar(zapInterface.getInstallationEnvVar());
         this.management.setHomeDir(zapInterface.getHomeDir());
         this.management.setHost(zapInterface.getHost());
         this.management.setPort(zapInterface.getPort());
+        this.management.setCommandLineArgs(zapInterface.getCommandLineArgs());
 
         listener.getLogger().println("hello, im coming from the build listener");
         listener.getLogger().println("[ZAP Jenkins Plugin] POST-BUILD MANAGEMENT");

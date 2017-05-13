@@ -1,5 +1,7 @@
 package org.jenkinsci.plugins.zap;
 
+import java.util.ArrayList;
+
 import org.zaproxy.clientapi.core.ClientApi;
 
 import hudson.model.Action;
@@ -14,7 +16,8 @@ public class ZAPInterfaceAction implements Action {
     private String homeDir;
     private String host;
     private int port;
-
+    ArrayList<ZAPCmdLine> commandLineArgs;
+    
     public ZAPInterfaceAction() {
         this.hello = "";
         this.low = -1;
@@ -24,6 +27,7 @@ public class ZAPInterfaceAction implements Action {
         this.installationEnvVar = "";
         this.host = "";
         this.port = 0;
+        this.commandLineArgs = null;
         System.out.println();
         System.out.println("timeout: " + timeout);
         System.out.println("homeDir: " + homeDir);
@@ -33,7 +37,7 @@ public class ZAPInterfaceAction implements Action {
         System.out.println("api: " + goranAPI);
     }
 
-    public ZAPInterfaceAction(String hello, int low, ClientApi i, int timeout, String installationEnvVar, String homeDir, String host, int port) {
+    public ZAPInterfaceAction(String hello, int low, ClientApi i, int timeout, String installationEnvVar, String homeDir, String host, int port, ArrayList<ZAPCmdLine> commandLineArgs) {
         this.hello = hello;
         this.low = low;
         this.goranAPI = i;
@@ -42,12 +46,15 @@ public class ZAPInterfaceAction implements Action {
         this.homeDir = homeDir;
         this.host = host;
         this.port = port;
+        this.commandLineArgs = commandLineArgs;
         System.out.println();
         System.out.println("timeout: " + timeout);
         System.out.println("homeDir: " + homeDir);
         System.out.println("output: " + hello);
         System.out.println("low: " + low);
         System.out.println("api: " + goranAPI);
+        System.out.println("commandLineArgs: " + commandLineArgs.size());
+        
     }
 
     public int getTimeout() {
@@ -88,6 +95,14 @@ public class ZAPInterfaceAction implements Action {
     
     public void setPort(int port) {
         this.port = port;
+    }
+    
+    public ArrayList<ZAPCmdLine> getCommandLineArgs(){
+        return commandLineArgs;
+    }
+    
+    public void setCommandLineArgs(ArrayList<ZAPCmdLine> commandLineArgs){
+        this.commandLineArgs = commandLineArgs;
     }
 
     public String getHello() {
