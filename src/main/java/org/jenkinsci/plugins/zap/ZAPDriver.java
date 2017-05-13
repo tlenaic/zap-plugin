@@ -633,7 +633,8 @@ public class ZAPDriver extends AbstractDescribableImpl<ZAPDriver> implements Ser
         cmd.add(CMD_LINE_API_KEY + "=" + API_KEY);
 
         /* Set the default directory used by ZAP if it's defined and if a scan is provided */
-        if (this.activeScanURL && this.zapSettingsDir != null && !this.zapSettingsDir.isEmpty()) {
+        //if (this.activeScanURL && this.zapSettingsDir != null && !this.zapSettingsDir.isEmpty()) {
+        if (this.zapSettingsDir != null && !this.zapSettingsDir.isEmpty()) {
             cmd.add(CMD_LINE_DIR);
             cmd.add(this.zapSettingsDir);
         }

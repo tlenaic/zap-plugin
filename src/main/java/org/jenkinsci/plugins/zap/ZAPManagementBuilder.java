@@ -57,6 +57,15 @@ public class ZAPManagementBuilder extends Recorder {
     @DataBoundConstructor
     public ZAPManagementBuilder(ZAPManagement management) {
         this.management = management;
+
+        /* Call the set methods of ZAPDriver to set the values */
+//        this.zaproxy.setJiraUsername(ZAPBuilder.DESCRIPTOR.getJiraUsername());
+//        this.zaproxy.setJiraPassword(ZAPBuilder.DESCRIPTOR.getJiraPassword());
+//        ZAPInterfaceAction zapInterface = build.getAction(ZAPInterfaceAction.class);
+//
+//        System.out.println("my action timeout: " + zapInterface.getTimeout());
+//        System.out.println("my action install dir: " + zapInterface.getInstallationDir());
+//        System.out.println("my action home dir: " + zapInterface.getHomeDir());
     }
 
     private ZAPManagement management;
@@ -76,10 +85,21 @@ public class ZAPManagementBuilder extends Recorder {
     /** Method called when the build is launching */
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) {
-        MyAction abs = build.getAction(MyAction.class);
-        System.out.println("my action INFO: " + abs.getHello());
-        System.out.println("my action LOW: " + abs.getLow());
-        System.out.println("my action API: " + abs.getClientApi());
+        ZAPInterfaceAction zapInterface = build.getAction(ZAPInterfaceAction.class);
+        System.out.println("my action INFO: " + zapInterface.getHello());
+        System.out.println("my action LOW: " + zapInterface.getLow());
+        System.out.println("my action API: " + zapInterface.getClientApi());
+        System.out.println("my action timeout: " + zapInterface.getTimeout());
+        System.out.println("my action install dir: " + zapInterface.getInstallationEnvVar());
+        System.out.println("my action home dir: " + zapInterface.getHomeDir());
+        System.out.println("my action host: " + zapInterface.getHost());
+        System.out.println("my action port: " + zapInterface.getPort());
+        this.management.setTimeout(zapInterface.getTimeout());
+        this.management.setInstallationEnvVar(zapInterface.getInstallationEnvVar());
+        this.management.setHomeDir(zapInterface.getHomeDir());
+        this.management.setHost(zapInterface.getHost());
+        this.management.setPort(zapInterface.getPort());
+
         listener.getLogger().println("hello, im coming from the build listener");
         listener.getLogger().println("[ZAP Jenkins Plugin] POST-BUILD MANAGEMENT");
         listener.getLogger().println("");

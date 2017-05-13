@@ -336,9 +336,14 @@ public class ZAPBuilder extends Builder {
             return false;
         }
 
-        build.addAction(new MyAction());
-        MyAction abs = build.getAction(MyAction.class);
-        abs.setHello("derpyGogi");
+        build.addAction(new ZAPInterfaceAction());
+        ZAPInterfaceAction zapInterface = build.getAction(ZAPInterfaceAction.class);
+        zapInterface.setHello("derpyGogi");
+        zapInterface.setInstallationEnvVar(zaproxy.getZapHome());
+        zapInterface.setHomeDir(zaproxy.getZapSettingsDir());
+        zapInterface.setTimeout(zaproxy.getTimeout());
+        zapInterface.setHost(zaproxy.getEvaluatedZapHost());
+        zapInterface.setPort(zaproxy.getEvaluatedZapPort());
         
         return res;
     }
