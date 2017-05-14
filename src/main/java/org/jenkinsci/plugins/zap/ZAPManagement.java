@@ -148,36 +148,22 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         System.out.println("");
         System.out.println("BEFORE SETTING JDK");
         zap.setBuildJDK();
-        /*
-         * on Windows environment variables are converted to all upper case, but
-         * no such conversions are done on Unix, so to make this cross-platform,
-         * convert variables to all upper cases.
-         */
-        System.out.println("GOGI INSIDE: " + build.getBuildVariables().entrySet().size());
-        for (Map.Entry<String, String> e : build.getBuildVariables().entrySet()){
-            System.out.println("KEY: " + e.getKey() + "VALUE: " + e.getValue());
-            envVars.put(e.getKey(), e.getValue());
-        }
-        System.out.println("GOGI OUTSIDE");
-        FilePath workDir = new FilePath(zap.getWorkspace().getChannel(), this.zapInstallationDir);
-
-        /* JDK choice */
-        //computeJdkToUse(build, listener, envVars);
 
         /*
          * Launch ZAP process on remote machine (on master if no remote machine)
          */
-        Utils.loggerMessage(listener, 0, "[{0}] EXECUTE LAUNCH COMMAND", Utils.ZAP);
-        Proc proc = launcher.launch().cmds(zap.getCommand()).envs(envVars).stdout(listener).pwd(workDir).start();
-
-        /* Call waitForSuccessfulConnectionToZap(int, BuildListener) remotely */
-        Utils.lineBreak(listener);
-        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ START ]", Utils.ZAP);
-        build.getWorkspace().act(new WaitZAPManagementInitCallable(listener, this));
-        Utils.lineBreak(listener);
-        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ SUCCESSFUL ]", Utils.ZAP);
-        Utils.lineBreak(listener);
-        return proc;
+//        Utils.loggerMessage(listener, 0, "[{0}] EXECUTE LAUNCH COMMAND", Utils.ZAP);
+//        Proc proc = launcher.launch().cmds(zap.getCommand()).envs(envVars).stdout(listener).pwd(workDir).start();
+//
+//        /* Call waitForSuccessfulConnectionToZap(int, BuildListener) remotely */
+//        Utils.lineBreak(listener);
+//        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ START ]", Utils.ZAP);
+//        build.getWorkspace().act(new WaitZAPManagementInitCallable(listener, this));
+//        Utils.lineBreak(listener);
+//        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ SUCCESSFUL ]", Utils.ZAP);
+//        Utils.lineBreak(listener);
+//        return proc;
+        return zap.launch();
     }
  
     /**
@@ -194,48 +180,7 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
      *      "https://groups.google.com/forum/#!topic/zaproxy-develop/gZxYp8Og960">
      *      [JAVA] Avoid sleep to wait ZAProxy initialization</a>
      */
-    private void waitForSuccessfulConnectionToZap(BuildListener listener, int timeout) {
-        listener.getLogger().println("waitForSuccessfulConnectionToZap");
-        int timeoutInMs = (int) TimeUnit.SECONDS.toMillis(timeout);
-        int connectionTimeoutInMs = timeoutInMs;
-        int pollingIntervalInMs = (int) TimeUnit.SECONDS.toMillis(1);
-        boolean connectionSuccessful = false;
-        long startTime = System.currentTimeMillis();
-        Socket socket = null;
-        do
-            try {
-                socket = new Socket();
-                socket.connect(new InetSocketAddress("127.0.0.1", 9090), connectionTimeoutInMs);
-                connectionSuccessful = true;
-            } catch (SocketTimeoutException ignore) {
-                listener.error(ExceptionUtils.getStackTrace(ignore));
-                throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
 
-            } catch (IOException ignore) {
-                /* Try again but wait some time first */
-                try {
-                    Thread.sleep(pollingIntervalInMs);
-                } catch (InterruptedException e) {
-                    listener.error(ExceptionUtils.getStackTrace(ignore));
-                    throw new BuildException("The task was interrupted while sleeping between connection polling.", e);
-                }
-
-                long ellapsedTime = System.currentTimeMillis() - startTime;
-                if (ellapsedTime >= timeoutInMs) {
-                    listener.error(ExceptionUtils.getStackTrace(ignore));
-                    throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
-                }
-                connectionTimeoutInMs = (int) (timeoutInMs - ellapsedTime);
-            } finally {
-                if (socket != null)
-                    try {
-                        socket.close();
-                    } catch (IOException e) {
-                        listener.error(ExceptionUtils.getStackTrace(e));
-                    }
-            }
-        while (!connectionSuccessful);
-    }
 
     /**
      * Execute ZAPDriver method following build's setup and stop ZAP at the end.
@@ -259,8 +204,9 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
          * Check to make sure that plugin's are installed with ZAP if they are
          * selected in the UI.
          */
-
-        ClientApi clientApi = new ClientApi("127.0.0.1", 9090, API_KEY);
+        listener.getLogger().println("host: " + host);
+        listener.getLogger().println("port: " + port);
+        ClientApi clientApi = new ClientApi(host, port, API_KEY);
 
         try {
             if (buildSuccess) {
@@ -428,34 +374,6 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
             clientApi.core.shutdown();
         } else
             Utils.loggerMessage(listener, 0, "[{0}] SHUTDOWN [ ERROR ]", Utils.ZAP);
-    }
-
-    /**
-     * This class allows to launch a method on a remote machine (if there is,
-     * otherwise, on a local machine). The method launched is to wait the
-     * complete initialization of ZAProxy.
-     **/
-    private static class WaitZAPManagementInitCallable implements FileCallable<Void> {
-
-        private static final long serialVersionUID = 1L;
-
-        private BuildListener listener;
-        private ZAPManagement zaproxy;
-
-        public WaitZAPManagementInitCallable(BuildListener listener, ZAPManagement zaproxy) {
-            this.listener = listener;
-            this.zaproxy = zaproxy;
-        }
-
-        @Override
-        public Void invoke(File f, VirtualChannel channel) {
-            zaproxy.waitForSuccessfulConnectionToZap(listener, zaproxy.timeout);
-            return null;
-        }
-
-        @Override
-        public void checkRoles(RoleChecker checker) throws SecurityException {
-            /* N/A */ }
     }
 
     @Extension

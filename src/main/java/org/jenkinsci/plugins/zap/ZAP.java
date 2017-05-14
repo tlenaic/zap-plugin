@@ -190,8 +190,6 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
             System.out.println("KEY: " + e.getKey() + "VALUE: " + e.getValue());
         }
 
-        FilePath workDir = new FilePath(getWorkspace().getChannel(), getInstallationDir());
-
         System.out.println("INSIDE THE SETTER");
         AbstractProject<?, ?> project = build.getProject();
         //JDK 8u131 test
@@ -212,35 +210,31 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
                 jdk = jdk.forNode(computer.getNode(), listener);
             jdk.buildEnvVars(envVars);
         }
-        // System.out.println();
-        // printMap(getEnvVars());
-        // System.out.println();
-
     }
 
     private EnvVars getEnvVars () throws IOException, InterruptedException {
         return this.envVars;
     }
 
-    public void setCommandLineArgs(String key, String value) {
-        switch (key) {
-        case "HOST":
-            command.add(CMD_LINE_HOST);
-            command.add(value);
-            break;
-        case "PORT":
-            command.add(CMD_LINE_PORT);
-            command.add(value);
-            break;
-        case "HOME":
-            command.add(CMD_LINE_DIR);
-            command.add(value);
-            break;
-        default:
-            command.add(key);
-            command.add(value);
-            break;
-        }
+    public Proc launch () throws IOException, InterruptedException {
+        FilePath workDir = new FilePath(getWorkspace().getChannel(), getInstallationDir());
+
+         System.out.println();
+         printMap(getEnvVars());
+         System.out.println();
+
+        Utils.loggerMessage(listener, 0, "[{0}] EXECUTE LAUNCH COMMAND", Utils.ZAP);
+        Proc proc = launcher.launch().cmds(getCommand()).envs(envVars).stdout(listener).pwd(workDir).start();
+
+        /* Call waitForSuccessfulConnectionToZap(int, BuildListener) remotely */
+        Utils.lineBreak(listener);
+        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ START ]", Utils.ZAP);
+        build.getWorkspace().act(new WaitZAPInitCallable(listener, this));
+        Utils.lineBreak(listener);
+        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ SUCCESSFUL ]", Utils.ZAP);
+        Utils.lineBreak(listener);
+        return proc;
+
     }
 
     private void printMap(Map mp) {
@@ -251,14 +245,74 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
             it.remove(); // avoids a ConcurrentModificationException
         }
     }
-    // public void setDefaultCmdLineArgs(String zap, String host, String port) {
-    // cmdLineArgs.add(zap);
-    // cmdLineArgs.add(CMD_LINE_DAEMON);
-    // cmdLineArgs.add(CMD_LINE_HOST);
-    // cmdLineArgs.add(host);
-    // cmdLineArgs.add(CMD_LINE_PORT);
-    // cmdLineArgs.add(port);
-    // cmdLineArgs.add(CMD_LINE_CONFIG);
-    // cmdLineArgs.add(CMD_LINE_API_KEY + "=" + API_KEY);
-    // }
+
+    private void waitForSuccessfulConnectionToZap(BuildListener listener) {
+        Utils.loggerMessage(listener, 0, "[{0}] timeout is [ SUCCESSFUL ]", Integer.toString(timeout));
+        int timeoutInMs = (int) TimeUnit.SECONDS.toMillis(timeout);
+        int connectionTimeoutInMs = timeoutInMs;
+        int pollingIntervalInMs = (int) TimeUnit.SECONDS.toMillis(1);
+        boolean connectionSuccessful = false;
+        long startTime = System.currentTimeMillis();
+        Socket socket = null;
+        do
+            try {
+                socket = new Socket();
+                socket.connect(new InetSocketAddress(host, port), connectionTimeoutInMs);
+                connectionSuccessful = true;
+            }
+        catch (SocketTimeoutException ignore) {
+            listener.error(ExceptionUtils.getStackTrace(ignore));
+            throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
+
+        }
+        catch (IOException ignore) {
+            /* Try again but wait some time first */
+            try {
+                Thread.sleep(pollingIntervalInMs);
+            }
+            catch (InterruptedException e) {
+                listener.error(ExceptionUtils.getStackTrace(ignore));
+                throw new BuildException("The task was interrupted while sleeping between connection polling.", e);
+            }
+
+            long ellapsedTime = System.currentTimeMillis() - startTime;
+            if (ellapsedTime >= timeoutInMs) {
+                listener.error(ExceptionUtils.getStackTrace(ignore));
+                throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
+            }
+            connectionTimeoutInMs = (int) (timeoutInMs - ellapsedTime);
+        }
+        finally {
+            if (socket != null) try {
+                socket.close();
+            }
+            catch (IOException e) {
+                listener.error(ExceptionUtils.getStackTrace(e));
+            }
+        }
+        while (!connectionSuccessful);
+    }
+
+    private static class WaitZAPInitCallable implements FileCallable<Void> {
+
+        private static final long serialVersionUID = 1L;
+
+        private BuildListener listener;
+        private ZAP zaproxy;
+
+        public WaitZAPInitCallable(BuildListener listener, ZAP zaproxy) {
+            this.listener = listener;
+            this.zaproxy = zaproxy;
+        }
+
+        @Override
+        public Void invoke(File f, VirtualChannel channel) {
+            zaproxy.waitForSuccessfulConnectionToZap(listener);
+            return null;
+        }
+
+        @Override
+        public void checkRoles(RoleChecker checker) throws SecurityException {
+            /* N/A */ }
+    }
 }
