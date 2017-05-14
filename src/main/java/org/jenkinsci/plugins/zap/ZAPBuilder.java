@@ -338,7 +338,7 @@ public class ZAPBuilder extends Builder {
 
         build.addAction(new ZAPInterfaceAction());
         ZAPInterfaceAction zapInterface = build.getAction(ZAPInterfaceAction.class);
-        zapInterface.setHello("derpyGogi");
+        zapInterface.setBuildStatus(true);
         zapInterface.setInstallationEnvVar(zaproxy.getZapHome());
         zapInterface.setHomeDir(zaproxy.getZapSettingsDir());
         zapInterface.setTimeout(zaproxy.getTimeout());
