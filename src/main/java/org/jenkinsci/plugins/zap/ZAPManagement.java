@@ -31,6 +31,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -57,9 +58,9 @@ import hudson.Proc;
 import hudson.FilePath.FileCallable;
 
 /**
- * Contains methods to start and execute ZAPManagement. Members variables are
+ * Contains methods to start and execute ZAPZAPManagement. Members variables are
  * bound to the config.jelly placed to
- * {@link "com/github/jenkinsci/zaproxyplugin/ZAPManagement/config.jelly"}
+ * {@link "com/github/jenkinsci/zaproxyplugin/ZAPZAPManagement/config.jelly"}
  *
  * @author Goran Sarenkapa
  * @author Mostafa AbdelMoez
@@ -111,13 +112,18 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         return s;
     }
 
-    public Proc startZAPB(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher)
-            throws IllegalArgumentException, IOException, InterruptedException {
-        listener.getLogger().println("gogi got in");
-        return null;
-    }
-
     public Proc startZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher) throws IllegalArgumentException, IOException, InterruptedException {
+        System.out.println("");
+        System.out.println("INITIATING POST BUILD");
+        System.out.println("");
+        System.out.println("");
+
+        if (this.buildStatus == false){
+            Utils.loggerMessage(listener, 0, "[{0}] WE GOT FALSE SO WE BREAK", Utils.ZAP);
+            System.out.println("WE GOT FALSE SO WE BREAK");
+            return null;
+        }
+        System.out.println("WE GOT TRUE SO WE INIT");
         ZAP zap = new ZAP(build, listener, launcher, this.getTimeout(), this.getInstallationEnvVar(), this.getHomeDir(), this.getHost(), this.getPort(), this.getCommandLineArgs());
 
         this.zapInstallationDir = zap.getInstallationDir();
@@ -133,21 +139,30 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
 
         System.out.println("new list -------------");
         for(int i = 0; i < zap.getCommand().size(); i++) {
-            System.out.println(zap.getCommand().get(i));
+            //System.out.println(zap.getCommand().get(i));
         }
 
         EnvVars envVars = build.getEnvironment(listener);
+        
+        System.out.println("");
+        System.out.println("");
+        System.out.println("BEFORE SETTING JDK");
+        zap.setBuildJDK();
         /*
          * on Windows environment variables are converted to all upper case, but
          * no such conversions are done on Unix, so to make this cross-platform,
          * convert variables to all upper cases.
          */
-        for (Map.Entry<String, String> e : build.getBuildVariables().entrySet())
+        System.out.println("GOGI INSIDE: " + build.getBuildVariables().entrySet().size());
+        for (Map.Entry<String, String> e : build.getBuildVariables().entrySet()){
+            System.out.println("KEY: " + e.getKey() + "VALUE: " + e.getValue());
             envVars.put(e.getKey(), e.getValue());
+        }
+        System.out.println("GOGI OUTSIDE");
         FilePath workDir = new FilePath(zap.getWorkspace().getChannel(), this.zapInstallationDir);
 
         /* JDK choice */
-        computeJdkToUse(build, listener, envVars);
+        //computeJdkToUse(build, listener, envVars);
 
         /*
          * Launch ZAP process on remote machine (on master if no remote machine)
@@ -164,60 +179,7 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         Utils.lineBreak(listener);
         return proc;
     }
-
-    /**
-     * Set the JDK to use to start ZAP.
-     *
-     * @param build
-     * @param listener
-     *            of type BuildListener: the display log listener during the
-     *            Jenkins job execution.
-     * @param env
-     *            of type EnvVars: list of environment variables. Used to set
-     *            the path to the JDK.
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    private void computeJdkToUse(AbstractBuild<?, ?> build, BuildListener listener, EnvVars env)
-            throws IOException, InterruptedException {
-        JDK jdkToUse = getJdkToUse(build.getProject());
-        if (jdkToUse != null) {
-            Computer computer = Computer.currentComputer();
-            /* just in case we are not in a build */
-            if (computer != null)
-                jdkToUse = jdkToUse.forNode(computer.getNode(), listener);
-            jdkToUse.buildEnvVars(env);
-        }
-    }
-
-    /**
-     * @return JDK to be used with this project.
-     */
-    private JDK getJdkToUse(AbstractProject<?, ?> project) {
-        JDK jdkToUse = Jenkins.getInstance().getJDK("InheritFromJob");
-        if (jdkToUse == null)
-            jdkToUse = project.getJDK();
-        return jdkToUse;
-    }
-
-    /**
-     * Add list of command line to the list in param
-     *
-     * @param list
-     *            of type List<String>: the list to attach ZAP command line to.
-     * @param cmdList
-     *            of type ArrayList<ZAPCmdLine>: the list of ZAP command line
-     *            options and their values.
-     */
-    private void addZapCmdLine(List<String> list, ArrayList<ZAPCmdLine> cmdList) {
-        for (ZAPCmdLine zapCmd : cmdList) {
-            if (zapCmd.getCmdLineOption() != null && !zapCmd.getCmdLineOption().isEmpty())
-                list.add(zapCmd.getCmdLineOption());
-            if (zapCmd.getCmdLineValue() != null && !zapCmd.getCmdLineValue().isEmpty())
-                list.add(zapCmd.getCmdLineValue());
-        }
-    }
-
+ 
     /**
      * Wait for ZAP's initialization such that it is ready to use at the end of
      * the method, otherwise catch the exception. If there is a remote machine,
@@ -635,11 +597,16 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
 
     /*****************************/
 
+    private boolean buildStatus;
     private int timeout;
     private String installationEnvVar;
     private String homeDir;
     private String host;
     private int port;
+
+    public void setBuildStatus(boolean buildStatus) {
+        this.buildStatus = buildStatus;
+    }
 
     private int getTimeout() {
         return this.timeout;

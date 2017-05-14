@@ -8,9 +8,7 @@ import hudson.model.Action;
 
 public class ZAPInterfaceAction implements Action {
 
-    public String hello;
-    public int low;
-    private ClientApi goranAPI;
+    private boolean buildStatus;
     private int timeout;
     private String installationEnvVar;
     private String homeDir;
@@ -19,9 +17,8 @@ public class ZAPInterfaceAction implements Action {
     ArrayList<ZAPCmdLine> commandLineArgs;
     
     public ZAPInterfaceAction() {
-        this.hello = "";
-        this.low = -1;
-        this.goranAPI = null;
+        this.buildStatus = false;
+
         this.timeout = -1;
         this.homeDir = "";
         this.installationEnvVar = "";
@@ -32,15 +29,10 @@ public class ZAPInterfaceAction implements Action {
         System.out.println("timeout: " + timeout);
         System.out.println("homeDir: " + homeDir);
         System.out.println("installationEnv: " + installationEnvVar);
-        System.out.println("output: " + hello);
-        System.out.println("low: " + low);
-        System.out.println("api: " + goranAPI);
     }
 
-    public ZAPInterfaceAction(String hello, int low, ClientApi i, int timeout, String installationEnvVar, String homeDir, String host, int port, ArrayList<ZAPCmdLine> commandLineArgs) {
-        this.hello = hello;
-        this.low = low;
-        this.goranAPI = i;
+    public ZAPInterfaceAction(boolean buildStatus, String hello, int low, ClientApi i, int timeout, String installationEnvVar, String homeDir, String host, int port, ArrayList<ZAPCmdLine> commandLineArgs) {
+        this.buildStatus = buildStatus;
         this.timeout = timeout;
         this.installationEnvVar = installationEnvVar;
         this.homeDir = homeDir;
@@ -50,11 +42,15 @@ public class ZAPInterfaceAction implements Action {
         System.out.println();
         System.out.println("timeout: " + timeout);
         System.out.println("homeDir: " + homeDir);
-        System.out.println("output: " + hello);
-        System.out.println("low: " + low);
-        System.out.println("api: " + goranAPI);
         System.out.println("commandLineArgs: " + commandLineArgs.size());
         
+    }
+    public boolean getBuildStatus() {
+        return this.buildStatus;
+    }
+
+    public void setBuildStatus(boolean buildStatus) {
+        this.buildStatus = buildStatus;
     }
 
     public int getTimeout() {
@@ -103,30 +99,6 @@ public class ZAPInterfaceAction implements Action {
     
     public void setCommandLineArgs(ArrayList<ZAPCmdLine> commandLineArgs){
         this.commandLineArgs = commandLineArgs;
-    }
-
-    public String getHello() {
-        return this.hello;
-    }
-
-    public void setHello(String hello) {
-        this.hello = hello;
-    }
-
-    public int getLow() {
-        return this.low;
-    }
-
-    public void setLow(int low) {
-        this.low = low;
-    }
-
-    public ClientApi getClientApi() {
-        return this.goranAPI;
-    }
-
-    public void setClientApi(ClientApi i) {
-        this.goranAPI = i;
     }
 
     @Override

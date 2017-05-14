@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -58,12 +59,15 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
     private int port;
     private List<String> command = new ArrayList<String>();
     private ArrayList<ZAPCmdLine> commandLineArgs;
+    private EnvVars envVars;
     
     /* ZAP executable files */
     private static final String ZAP_PROG_NAME_BAT = "zap.bat";
     private static final String ZAP_PROG_NAME_SH = "zap.sh";
 
-    public ZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher, int timeout, String installationEnvVar, String homeDir, String host, int port, ArrayList<ZAPCmdLine> commandLineArgs) {
+    public ZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher,
+            int timeout, String installationEnvVar, String homeDir,
+            String host, int port, ArrayList<ZAPCmdLine> commandLineArgs) throws IOException, InterruptedException {
         this.build = build;
         this.listener = listener;
         this.launcher = launcher;
@@ -73,7 +77,12 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
         this.host = host;
         this.port = port;
         this.commandLineArgs = commandLineArgs;
+        this.envVars = build.getEnvironment(listener);;
         System.out.println(this.toString());
+    }
+
+    private void init () {
+        
     }
 
     @Override
@@ -170,6 +179,49 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
         }
     }
 
+    // If the JDK was changed through the job's configurations, then update the Build's Environment Variables, can now remove the Java field to save space. Important, check if the 1.6 LTS is working with this or not.
+    public void setBuildJDK() throws IOException, InterruptedException {
+        EnvVars envVars = getEnvVars();
+
+        System.out.println("setBuildJDK INSIDE: " + build.getBuildVariables().entrySet().size());
+
+        for (Map.Entry<String, String> e : build.getBuildVariables().entrySet()) {
+            envVars.put(e.getKey(), e.getValue());
+            System.out.println("KEY: " + e.getKey() + "VALUE: " + e.getValue());
+        }
+
+        FilePath workDir = new FilePath(getWorkspace().getChannel(), getInstallationDir());
+
+        System.out.println("INSIDE THE SETTER");
+        AbstractProject<?, ?> project = build.getProject();
+        //JDK 8u131 test
+        System.out.println("project.getJDK()");
+        JDK jdk = project.getJDK();
+        System.out.println("JDK: " + (jdk == null));
+
+        System.out.println("Jenkins.getInstance().getJDK(\"JDK 8u131 test\")");
+        jdk = Jenkins.getInstance().getJDK("JDK 8u131 test");
+        System.out.println("JDK: " + (jdk == null));
+
+        if (jdk != null) {
+            // System.out.println("JDK: " + jdkToUse.getHome());
+            // System.out.println("JDK: " + jdkToUse.getName());
+            Computer computer = Computer.currentComputer();
+            /* just in case we are not in a build */
+            if (computer != null)
+                jdk = jdk.forNode(computer.getNode(), listener);
+            jdk.buildEnvVars(envVars);
+        }
+        // System.out.println();
+        // printMap(getEnvVars());
+        // System.out.println();
+
+    }
+
+    private EnvVars getEnvVars () throws IOException, InterruptedException {
+        return this.envVars;
+    }
+
     public void setCommandLineArgs(String key, String value) {
         switch (key) {
         case "HOST":
@@ -191,16 +243,22 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
         }
     }
 
-
-//    public void setDefaultCmdLineArgs(String zap, String host, String port) {
-//        cmdLineArgs.add(zap);
-//        cmdLineArgs.add(CMD_LINE_DAEMON);
-//        cmdLineArgs.add(CMD_LINE_HOST);
-//        cmdLineArgs.add(host);
-//        cmdLineArgs.add(CMD_LINE_PORT);
-//        cmdLineArgs.add(port);
-//        cmdLineArgs.add(CMD_LINE_CONFIG);
-//        cmdLineArgs.add(CMD_LINE_API_KEY + "=" + API_KEY);
-//    }
-
+    private void printMap(Map mp) {
+        Iterator it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+            System.out.println(pair.getKey() + " = " + pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
+        }
+    }
+    // public void setDefaultCmdLineArgs(String zap, String host, String port) {
+    // cmdLineArgs.add(zap);
+    // cmdLineArgs.add(CMD_LINE_DAEMON);
+    // cmdLineArgs.add(CMD_LINE_HOST);
+    // cmdLineArgs.add(host);
+    // cmdLineArgs.add(CMD_LINE_PORT);
+    // cmdLineArgs.add(port);
+    // cmdLineArgs.add(CMD_LINE_CONFIG);
+    // cmdLineArgs.add(CMD_LINE_API_KEY + "=" + API_KEY);
+    // }
 }
