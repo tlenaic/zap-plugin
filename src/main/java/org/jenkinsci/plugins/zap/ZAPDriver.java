@@ -1252,22 +1252,6 @@ public class ZAPDriver extends AbstractDescribableImpl<ZAPDriver> implements Ser
         return buildSuccess;
     }
 
-    public Result executeZAPPostBuild(BuildListener listener, FilePath workspace) {
-        Result buildStatus = Result.SUCCESS;
-        ClientApi clientApi = new ClientApi(this.evaluatedZapHost, this.evaluatedZapPort, API_KEY);
-        Utils.lineBreak(listener);
-//        Utils.loggerMessage(listener, 0, "[{0}] MANAGE POST-BUILD THRESHOLD(S) ENABLED [ {1} ]", Utils.ZAP, String.valueOf(this.buildThresholds).toUpperCase());
-//        if(this.buildThresholds) try {
-//            buildStatus = ManageThreshold(listener, clientApi, this.hThresholdValue, this.hSoftValue, this.mThresholdValue, this.mSoftValue, this.lThresholdValue, this.lSoftValue, this.iThresholdValue, this.iSoftValue, this.cumulValue);
-//        } catch (ClientApiException e) {
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-
-        return buildStatus;
-
-    }
 
     /**
      * Method used to return the checked state inside CREATE JIRA ISSUES.
@@ -2875,6 +2859,22 @@ public class ZAPDriver extends AbstractDescribableImpl<ZAPDriver> implements Ser
 
     public void setEvaluatedInternalSites(String evaluatedInternalSites) { this.evaluatedInternalSites = evaluatedInternalSites; }
 
+    private String sessionFilePath ;
+
+    public void setSessionFilePath(String sessionFilePath ){ this.sessionFilePath = sessionFilePath; }
+
+    public String getSessionFilePath(){
+        sessionFilePath =  null ;
+        if (this.autoLoadSession) { /* LOAD SESSION */
+            File sessionFile = new File(this.loadSession);
+            sessionFilePath = sessionFile.getAbsolutePath() ;
+        }
+        else { /* PERSIST SESSION */
+            File sessionFile = new File(this.zapHome, this.evaluatedSessionFilename);
+            sessionFilePath = sessionFile.getAbsolutePath() ;
+        }
+        return sessionFilePath;
+    }
     /* Session Properties */
     private final String contextName; /* Context name to use for the session. */
 
