@@ -292,7 +292,6 @@ public class  ZAPBuilder extends Builder {
             }
 
             res = build.getWorkspace().act(new ZAPDriverCallable(listener, this.zaproxy));
-
             proc.joinWithTimeout(60L, TimeUnit.MINUTES, listener);
             Utils.lineBreak(listener);
             Utils.lineBreak(listener);
@@ -337,6 +336,19 @@ public class  ZAPBuilder extends Builder {
             listener.error(ExceptionUtils.getStackTrace(e));
             return false;
         }
+
+        build.addAction(new ZAPInterfaceAction());
+        ZAPInterfaceAction zapInterface = build.getAction(ZAPInterfaceAction.class);
+        zapInterface.setBuildStatus(true);
+        zapInterface.setInstallationEnvVar(zaproxy.getZapHome());
+        zapInterface.setHomeDir(zaproxy.getZapSettingsDir());
+        zapInterface.setTimeout(zaproxy.getTimeout());
+        zapInterface.setHost(zaproxy.getEvaluatedZapHost());
+        zapInterface.setPort(zaproxy.getEvaluatedZapPort());
+        zapInterface.setAutoInstall(zaproxy.getAutoInstall());
+        zapInterface.setToolUsed(zaproxy.getToolUsed());
+        zapInterface.setCommandLineArgs(zaproxy.getEvaluatedCmdLinesZap());
+        zapInterface.setSessionFilePath(zaproxy.getSessionFilePath());
 
         return res;
     }
