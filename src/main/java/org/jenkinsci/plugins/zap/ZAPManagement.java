@@ -451,6 +451,7 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
     private Result ManageThreshold(BuildListener listener,ClientApi clientApi, int hThresholdValue, int hSoftValue, int mThresholdValue, int  mSoftValue, int lThresholdValue, int lSoftValue, int iThresholdValue, int iSoftValue, int cumulValue) throws ClientApiException, IOException {
 
         Utils.lineBreak(listener);
+        Utils.loggerMessage(listener, 0, "-------------------------------------------------------", Utils.ZAP);
         Utils.loggerMessage(listener, 0, "START : COMPUTE THRESHOLD", Utils.ZAP);
         Result buildResult = Result.SUCCESS;
 
@@ -473,11 +474,34 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         int lScale = computeProduct(lThresholdValue,nbAlertLow);
         int iScale = computeProduct(iThresholdValue,nbAlertInfo);
 
-        if((mScale > mSoftValue) || (lScale > lSoftValue ) || (iScale > iSoftValue)){buildResult = Result.UNSTABLE;}
-        if((hScale > hSoftValue) || ((hScale+mScale+lScale+iScale)> cumulValue)){buildResult = Result.FAILURE;}
+        Utils.loggerMessage(listener, 0, "----- COMPUTED / SOFT THRESHOLD -----", Utils.ZAP);
+        Utils.loggerMessage(listener, 1, "High [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale), Integer.toString(hSoftValue));
+        Utils.loggerMessage(listener, 1, "Medium [ {1} / {2} ]", Utils.ZAP, Integer.toString(mScale), Integer.toString(mSoftValue));
+        Utils.loggerMessage(listener, 1, "Low [ {1} / {2} ]", Utils.ZAP, Integer.toString(lScale), Integer.toString(lSoftValue));
+        Utils.loggerMessage(listener, 1, "Informational [ {1} / {2} ]", Utils.ZAP, Integer.toString(iScale), Integer.toString(iSoftValue));
+        Utils.loggerMessage(listener, 1, "Cumulative [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale+mScale+lScale+iScale), Integer.toString(cumulValue));
+        Utils.lineBreak(listener);
+
+        if((mScale > mSoftValue) || (lScale > lSoftValue ) || (iScale > iSoftValue)) {
+            Utils.loggerMessage(listener, 0, "###########################################", Utils.ZAP);
+            Utils.loggerMessage(listener, 0, "# ONE OR MORE SOFT THRESHOLD HAS BEEN HIT #", Utils.ZAP);
+            Utils.loggerMessage(listener, 0, "#       BUILD IS MARKED AS UNSTABLE       #", Utils.ZAP);
+            Utils.loggerMessage(listener, 0, "###########################################", Utils.ZAP);
+            Utils.lineBreak(listener);
+            buildResult = Result.UNSTABLE;
+        }
+        if((hScale > hSoftValue) || ((hScale+mScale+lScale+iScale)> cumulValue)) {
+            Utils.loggerMessage(listener, 0, "##################################################", Utils.ZAP);
+            Utils.loggerMessage(listener, 0, "# HIGH OR CUMULATIVE SOFT THRESHOLD HAS BEEN HIT #", Utils.ZAP);
+            Utils.loggerMessage(listener, 0, "#           BUILD IS MARKED AS FAILED            #", Utils.ZAP);
+            Utils.loggerMessage(listener, 0, "##################################################", Utils.ZAP);
+            Utils.lineBreak(listener);
+            buildResult = Result.FAILURE;
+        }
 
 
         Utils.loggerMessage(listener, 0, "END : COMPUTING THRESHOLD", Utils.ZAP);
+        Utils.loggerMessage(listener, 0, "-------------------------------------------------------", Utils.ZAP);
 
         return  buildResult;
 
