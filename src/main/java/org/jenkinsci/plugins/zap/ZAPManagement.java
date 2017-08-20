@@ -197,7 +197,7 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         else Utils.loggerMessage(listener, 1, "ZAP INSTALLATION DIRECTORY = [ {0} ]", this.zapProgram);
     }
 
-
+/*
     public Proc startZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher) throws IllegalArgumentException, IOException, InterruptedException {
         Utils.loggerMessage(listener, 0, "Utils gogi got in");
 
@@ -212,13 +212,13 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
             throw new NullPointerException("No workspace from node " + node + " which is computer " + node.toComputer() + " and has channel " + node.getChannel());
         }
 
-        /* Contains the absolute path to ZAP program */
+        /* Contains the absolute path to ZAP program * /
         FilePath zapPathWithProgName = new FilePath(ws.getChannel(), zapProgram + getZAPProgramNameWithSeparator(build));
         Utils.loggerMessage(listener, 0, "[{0}] CONFIGURE RUN COMMANDS for [ {1} ]", Utils.ZAP, zapPathWithProgName.getRemote());
 
         listener.getLogger().println("my action host:" + zapHost);
 
-        /* Command to start ZAProxy with parameters */
+        /* Command to start ZAProxy with parameters * /
         List<String> cmd = new ArrayList<String>();
         cmd.add(zapPathWithProgName.getRemote());
         cmd.add(CMD_LINE_DAEMON);
@@ -229,29 +229,26 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         cmd.add(CMD_LINE_CONFIG);
         cmd.add(CMD_LINE_API_KEY + "=" + API_KEY);
 
-         /* Set the default directory used by ZAP if it's defined and if a scan is provided */
+         /* Set the default directory used by ZAP if it's defined and if a scan is provided * /
         if (this.getHomeDir() != null && !this.getHomeDir().isEmpty()) {
             cmd.add(CMD_LINE_DIR);
             cmd.add(this.getHomeDir());
         }
-        /* Adds command line arguments if it's provided */
+        /* Adds command line arguments if it's provided * /
         if (!this.commandLineArgs.isEmpty()) addZapCmdLine(cmd,this.getCommandLineArgs());
 
 
         EnvVars envVars = build.getEnvironment(listener);
-        /* on Windows environment variables are converted to all upper case, but no such conversions are done on Unix, so to make this cross-platform, convert variables to all upper cases. */
-        for (Map.Entry<String, String> e : build.getBuildVariables().entrySet())
-            envVars.put(e.getKey(), e.getValue());
-        FilePath workDir = new FilePath(ws.getChannel(), zapProgram);
+        /* on Windows environment variables are converted to all upper case, but no such conversions are done on Unix, so to make this cross-platform, convert variables to all upper cases. * /
 
-        /* JDK choice */
+        /* JDK choice * /
         computeJdkToUse(build, listener, envVars);
 
-        /* Launch ZAP process on remote machine (on master if no remote machine) */
+        /* Launch ZAP process on remote machine (on master if no remote machine) * /
         Utils.loggerMessage(listener, 0, "[{0}] EXECUTE LAUNCH COMMAND", Utils.ZAP);
         Proc proc = launcher.launch().cmds(cmd).envs(envVars).stdout(listener).pwd(workDir).start();
 
-        /* Call waitForSuccessfulConnectionToZap(int, BuildListener) remotely */
+        /* Call waitForSuccessfulConnectionToZap(int, BuildListener) remotely * /
         Utils.lineBreak(listener);
         Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ START ]", Utils.ZAP);
         build.getWorkspace().act(new WaitZAPManagementInitCallable(listener, this));
@@ -259,6 +256,38 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ SUCCESSFUL ]", Utils.ZAP);
         Utils.lineBreak(listener);
         return proc;
+    } */
+
+    public Proc startZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher) throws IllegalArgumentException, IOException, InterruptedException {
+        System.out.println("");
+        System.out.println("INITIATING POST BUILD");
+        System.out.println("");
+        System.out.println("");
+
+        if (this.buildStatus == false){
+            Utils.loggerMessage(listener, 0, "[{0}] WE GOT FALSE SO WE BREAK", Utils.ZAP);
+            System.out.println("WE GOT FALSE SO WE BREAK");
+            return null;
+        }
+        System.out.println("WE GOT TRUE SO WE INIT");
+        ZAP zap = new ZAP(build, listener, launcher, this.getTimeout(), this.getInstallationEnvVar(), this.getHomeDir(), this.getToolUsed(),this.getAutoInstall(), this.getHost(), this.getPort(), this.getCommandLineArgs());
+
+        this.zapProgram = zap.getInstallationDir();
+        zap.checkParams(this.zapProgram);
+
+        System.out.println("startZAP list -------------");
+        for(int i = 0; i < this.getCommandLineArgs().size(); i++) {
+            System.out.println(this.getCommandLineArgs().get(i));
+        }
+
+        System.out.println("");
+        System.out.println("BEFORE SETTING JDK");
+        zap.setBuildJDK();
+
+        /*
+         * Launch ZAP process on remote machine (on master if no remote machine)
+         */
+        return zap.launch();
     }
 
     /**
