@@ -187,50 +187,7 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
      * @see <a href= "https://groups.google.com/forum/#!topic/zaproxy-develop/gZxYp8Og960"> [JAVA] Avoid sleep to wait ZAProxy initialization</a>
      */
     private void waitForSuccessfulConnectionToZap(BuildListener listener) {
-        listener.getLogger().println("waitForSuccessfulConnectionToZap");
-        int timeoutInMs = (int) TimeUnit.SECONDS.toMillis(this.getTimeout());
-        int connectionTimeoutInMs = timeoutInMs;
-        int pollingIntervalInMs = (int) TimeUnit.SECONDS.toMillis(1);
-        boolean connectionSuccessful = false;
-        long startTime = System.currentTimeMillis();
-        Socket socket = null;
-        do
-            try {
-                socket = new Socket();
-                socket.connect(new InetSocketAddress(getHost(), getPort()), connectionTimeoutInMs);
-                connectionSuccessful = true;
-            }
-            catch (SocketTimeoutException ignore) {
-                listener.error(ExceptionUtils.getStackTrace(ignore));
-                throw new BuildException("Unable to connect to ZAP's proxy after " + this.getTimeout() + " seconds.");
-
-            }
-            catch (IOException ignore) {
-            /* Try again but wait some time first */
-                try {
-                    Thread.sleep(pollingIntervalInMs);
-                }
-                catch (InterruptedException e) {
-                    listener.error(ExceptionUtils.getStackTrace(ignore));
-                    throw new BuildException("The task was interrupted while sleeping between connection polling.", e);
-                }
-
-                long ellapsedTime = System.currentTimeMillis() - startTime;
-                if (ellapsedTime >= timeoutInMs) {
-                    listener.error(ExceptionUtils.getStackTrace(ignore));
-                    throw new BuildException("Unable to connect to ZAP's proxy after " + this.getTimeout() + " seconds.");
-                }
-                connectionTimeoutInMs = (int) (timeoutInMs - ellapsedTime);
-            }
-            finally {
-                if (socket != null) try {
-                    socket.close();
-                }
-                catch (IOException e) {
-                    listener.error(ExceptionUtils.getStackTrace(e));
-                }
-            }
-        while (!connectionSuccessful);
+        ZAP.waitForSuccessfulConnectionToZap(listener, timeout, getHost(), getPort());
     }
 
     /**
@@ -282,7 +239,7 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         }
         finally {
             try {
-                stopZAP(listener, clientApi);
+                ZAP.stopZAP(listener, clientApi);
             }
             catch (ClientApiException e) {
                 listener.error(ExceptionUtils.getStackTrace(e));
@@ -350,11 +307,11 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
 
         Utils.lineBreak(listener);
         Utils.loggerMessage(listener, 1, "[{0}] ----- COMPUTED / SOFT THRESHOLD -----", Utils.ZAP);
-        Utils.loggerMessage(listener, 2, "[{0}] High [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale), Integer.toString(hSoftValue));
-        Utils.loggerMessage(listener, 2, "[{0}] Medium [ {1} / {2} ]", Utils.ZAP, Integer.toString(mScale), Integer.toString(mSoftValue));
-        Utils.loggerMessage(listener, 2, "[{0}] Low [ {1} / {2} ]", Utils.ZAP, Integer.toString(lScale), Integer.toString(lSoftValue));
-        Utils.loggerMessage(listener, 2, "[{0}] Informational [ {1} / {2} ]", Utils.ZAP, Integer.toString(iScale), Integer.toString(iSoftValue));
-        Utils.loggerMessage(listener, 2, "[{0}] Cumulative [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale+mScale+lScale+iScale), Integer.toString(cumulValue));
+        Utils.loggerMessage(listener, 1, "[{0}] High [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale), Integer.toString(hSoftValue));
+        Utils.loggerMessage(listener, 1, "[{0}] Medium [ {1} / {2} ]", Utils.ZAP, Integer.toString(mScale), Integer.toString(mSoftValue));
+        Utils.loggerMessage(listener, 1, "[{0}] Low [ {1} / {2} ]", Utils.ZAP, Integer.toString(lScale), Integer.toString(lSoftValue));
+        Utils.loggerMessage(listener, 1, "[{0}] Informational [ {1} / {2} ]", Utils.ZAP, Integer.toString(iScale), Integer.toString(iSoftValue));
+        Utils.loggerMessage(listener, 1, "[{0}] Cumulative [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale+mScale+lScale+iScale), Integer.toString(cumulValue));
         Utils.lineBreak(listener);
 
 
@@ -417,34 +374,6 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         }
 
         return nbAlert;
-    }
-
-    /**
-     * Stop ZAP if it has been previously started.
-     *
-     * @param listener
-     *            of type BuildListener: the display log listener during the Jenkins job execution.
-     * @param clientApi
-     *            of type ClientApi: the ZAP client API to call method.
-     * @throws ClientApiException
-     */
-    private void stopZAP(BuildListener listener, ClientApi clientApi) throws ClientApiException {
-        if (clientApi != null) {
-            Utils.lineBreak(listener);
-            Utils.loggerMessage(listener, 0, "[{0}] SHUTDOWN [ START ]", Utils.ZAP);
-            Utils.lineBreak(listener);
-            /**
-             * @class ApiResponse org.zaproxy.clientapi.gen.Core
-             *
-             * @method shutdown
-             *
-             * @param String apikey
-             *
-             * @throws ClientApiException
-             */
-            clientApi.core.shutdown();
-        }
-        else Utils.loggerMessage(listener, 0, "[{0}] SHUTDOWN [ ERROR ]", Utils.ZAP);
     }
 
     /**

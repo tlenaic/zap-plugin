@@ -158,6 +158,34 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
             Utils.loggerMessage(listener, 1, "[{0}] ZAP INSTALLATION DIRECTORY = [ {1} ]", Utils.ZAP, installationDir);
     }
 
+    /**
+     * Stop ZAP if it has been previously started.
+     *
+     * @param listener
+     *            of type BuildListener: the display log listener during the Jenkins job execution.
+     * @param clientApi
+     *            of type ClientApi: the ZAP client API to call method.
+     * @throws ClientApiException
+     */
+   static void stopZAP(BuildListener listener, ClientApi clientApi) throws ClientApiException {
+        if (clientApi != null) {
+            Utils.lineBreak(listener);
+            Utils.loggerMessage(listener, 0, "[{0}] SHUTDOWN [ START ]", Utils.ZAP);
+            Utils.lineBreak(listener);
+            /**
+             * @class ApiResponse org.zaproxy.clientapi.gen.Core
+             *
+             * @method shutdown
+             *
+             * @param String apikey
+             *
+             * @throws ClientApiException
+             */
+            clientApi.core.shutdown();
+        }
+        else Utils.loggerMessage(listener, 0, "[{0}] SHUTDOWN [ ERROR ]", Utils.ZAP);
+    }
+
     public List<String> getCommand() {
         return this.command;
     }
@@ -238,6 +266,55 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
 
     private EnvVars getEnvVars () throws IOException, InterruptedException {
         return this.envVars;
+    }
+
+
+    static void waitForSuccessfulConnectionToZap(BuildListener listener, int timeout, String evaluatedZapHost, int evaluatedZapPort) {
+        Utils.loggerMessage(listener, 0, "[{0}] Waiting for connection", Utils.ZAP);
+        int timeoutInMs = (int) TimeUnit.SECONDS.toMillis(timeout);
+        int connectionTimeoutInMs = timeoutInMs;
+        int pollingIntervalInMs = (int) TimeUnit.SECONDS.toMillis(1);
+        boolean connectionSuccessful = false;
+        long startTime = System.currentTimeMillis();
+        Socket socket = null;
+        do
+            try {
+                socket = new Socket();
+                socket.connect(new InetSocketAddress(evaluatedZapHost, evaluatedZapPort), connectionTimeoutInMs);
+                connectionSuccessful = true;
+            }
+            catch (SocketTimeoutException ignore) {
+                listener.error(ExceptionUtils.getStackTrace(ignore));
+                throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
+
+            }
+            catch (IOException ignore) {
+            /* Try again but wait some time first */
+                try {
+                    Thread.sleep(pollingIntervalInMs);
+                }
+                catch (InterruptedException e) {
+                    listener.error(ExceptionUtils.getStackTrace(ignore));
+                    throw new BuildException("The task was interrupted while sleeping between connection polling.", e);
+                }
+
+                long ellapsedTime = System.currentTimeMillis() - startTime;
+                if (ellapsedTime >= timeoutInMs) {
+                    listener.error(ExceptionUtils.getStackTrace(ignore));
+                    throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
+                }
+                connectionTimeoutInMs = (int) (timeoutInMs - ellapsedTime);
+            }
+            finally {
+                if (socket != null) try {
+                    socket.close();
+                }
+                catch (IOException e) {
+                    listener.error(ExceptionUtils.getStackTrace(e));
+                }
+            }
+        while (!connectionSuccessful);
+        Utils.loggerMessage(listener, 0, "[{0}] Connection established", Utils.ZAP);
     }
 
     public Proc launch () throws IOException, InterruptedException {

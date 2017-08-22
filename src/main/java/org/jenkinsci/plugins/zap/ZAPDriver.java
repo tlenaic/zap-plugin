@@ -736,49 +736,7 @@ public class ZAPDriver extends AbstractDescribableImpl<ZAPDriver> implements Ser
      * @see <a href= "https://groups.google.com/forum/#!topic/zaproxy-develop/gZxYp8Og960"> [JAVA] Avoid sleep to wait ZAProxy initialization</a>
      */
     private void waitForSuccessfulConnectionToZap(BuildListener listener, int timeout) {
-        int timeoutInMs = (int) TimeUnit.SECONDS.toMillis(timeout);
-        int connectionTimeoutInMs = timeoutInMs;
-        int pollingIntervalInMs = (int) TimeUnit.SECONDS.toMillis(1);
-        boolean connectionSuccessful = false;
-        long startTime = System.currentTimeMillis();
-        Socket socket = null;
-        do
-            try {
-                socket = new Socket();
-                socket.connect(new InetSocketAddress(evaluatedZapHost, evaluatedZapPort), connectionTimeoutInMs);
-                connectionSuccessful = true;
-            }
-        catch (SocketTimeoutException ignore) {
-            listener.error(ExceptionUtils.getStackTrace(ignore));
-            throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
-
-        }
-        catch (IOException ignore) {
-            /* Try again but wait some time first */
-            try {
-                Thread.sleep(pollingIntervalInMs);
-            }
-            catch (InterruptedException e) {
-                listener.error(ExceptionUtils.getStackTrace(ignore));
-                throw new BuildException("The task was interrupted while sleeping between connection polling.", e);
-            }
-
-            long ellapsedTime = System.currentTimeMillis() - startTime;
-            if (ellapsedTime >= timeoutInMs) {
-                listener.error(ExceptionUtils.getStackTrace(ignore));
-                throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
-            }
-            connectionTimeoutInMs = (int) (timeoutInMs - ellapsedTime);
-        }
-        finally {
-            if (socket != null) try {
-                socket.close();
-            }
-            catch (IOException e) {
-                listener.error(ExceptionUtils.getStackTrace(e));
-            }
-        }
-        while (!connectionSuccessful);
+        ZAP.waitForSuccessfulConnectionToZap(listener, timeout, evaluatedZapHost, evaluatedZapPort);
     }
 
     /**
@@ -1241,7 +1199,7 @@ public class ZAPDriver extends AbstractDescribableImpl<ZAPDriver> implements Ser
         }
         finally {
             try {
-                stopZAP(listener, clientApi);
+                ZAP.stopZAP(listener, clientApi);
             }
             catch (ClientApiException e) {
                 listener.error(ExceptionUtils.getStackTrace(e));
@@ -2106,34 +2064,6 @@ public class ZAPDriver extends AbstractDescribableImpl<ZAPDriver> implements Ser
             }
         }
         else Utils.loggerMessage(listener, 1, "SKIP ACTIVE SCAN FOR THE SITE [ {0} ]", targetURL);
-    }
-
-    /**
-     * Stop ZAP if it has been previously started.
-     * 
-     * @param listener
-     *            of type BuildListener: the display log listener during the Jenkins job execution.
-     * @param clientApi
-     *            of type ClientApi: the ZAP client API to call method.
-     * @throws ClientApiException
-     */
-    private void stopZAP(BuildListener listener, ClientApi clientApi) throws ClientApiException {
-        if (clientApi != null) {
-            Utils.lineBreak(listener);
-            Utils.loggerMessage(listener, 0, "[{0}] SHUTDOWN [ START ]", Utils.ZAP);
-            Utils.lineBreak(listener);
-            /**
-             * @class ApiResponse org.zaproxy.clientapi.gen.Core
-             *
-             * @method shutdown
-             *
-             * @param String apikey
-             *
-             * @throws ClientApiException
-             */
-            clientApi.core.shutdown();
-        }
-        else Utils.loggerMessage(listener, 0, "[{0}] SHUTDOWN [ ERROR ]", Utils.ZAP);
     }
 
     /**
