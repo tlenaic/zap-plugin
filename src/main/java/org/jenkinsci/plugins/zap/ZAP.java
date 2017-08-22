@@ -155,7 +155,7 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
         if (installationDir == null || installationDir.isEmpty())
             throw new IllegalArgumentException("ZAP INSTALLATION DIRECTORY IS MISSING, PROVIDED [ " + installationDir + " ]");
         else
-            Utils.loggerMessage(listener, 1, "ZAP INSTALLATION DIRECTORY = [ {0} ]", installationDir);
+            Utils.loggerMessage(listener, 1, "[{0}] ZAP INSTALLATION DIRECTORY = [ {1} ]", Utils.ZAP, installationDir);
     }
 
     public List<String> getCommand() {
@@ -251,16 +251,8 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
         FilePath workDir = new FilePath(getWorkspace().getChannel(), getInstallationDir());
 
         Utils.loggerMessage(listener, 0, "[{0}] EXECUTE LAUNCH COMMAND", Utils.ZAP);
-        Proc proc = launcher.launch().cmds(getCommand()).envs(envVars).stdout(listener).pwd(workDir).start();
 
-        /* Call waitForSuccessfulConnectionToZap(int, BuildListener) remotely */
-        Utils.lineBreak(listener);
-        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ START ]", Utils.ZAP);
-        build.getWorkspace().act(new WaitZAPInitCallable(listener, this));
-        Utils.lineBreak(listener);
-        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ SUCCESSFUL ]", Utils.ZAP);
-        Utils.lineBreak(listener);
-        return proc;
+        return launcher.launch().cmds(getCommand()).envs(envVars).stdout(listener).pwd(workDir).start();
 
     }
 
@@ -271,75 +263,5 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
             System.out.println(pair.getKey() + " = " + pair.getValue());
             it.remove(); // avoids a ConcurrentModificationException
         }
-    }
-
-    private void waitForSuccessfulConnectionToZap(BuildListener listener) {
-        Utils.loggerMessage(listener, 0, "[{0}] timeout is [ SUCCESSFUL ]", Integer.toString(timeout));
-        int timeoutInMs = (int) TimeUnit.SECONDS.toMillis(timeout);
-        int connectionTimeoutInMs = timeoutInMs;
-        int pollingIntervalInMs = (int) TimeUnit.SECONDS.toMillis(1);
-        boolean connectionSuccessful = false;
-        long startTime = System.currentTimeMillis();
-        Socket socket = null;
-        do
-            try {
-                socket = new Socket();
-                socket.connect(new InetSocketAddress(host, port), connectionTimeoutInMs);
-                connectionSuccessful = true;
-            }
-            catch (SocketTimeoutException ignore) {
-                listener.error(ExceptionUtils.getStackTrace(ignore));
-                throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
-
-            }
-            catch (IOException ignore) {
-            /* Try again but wait some time first */
-                try {
-                    Thread.sleep(pollingIntervalInMs);
-                }
-                catch (InterruptedException e) {
-                    listener.error(ExceptionUtils.getStackTrace(ignore));
-                    throw new BuildException("The task was interrupted while sleeping between connection polling.", e);
-                }
-
-                long ellapsedTime = System.currentTimeMillis() - startTime;
-                if (ellapsedTime >= timeoutInMs) {
-                    listener.error(ExceptionUtils.getStackTrace(ignore));
-                    throw new BuildException("Unable to connect to ZAP's proxy after " + timeout + " seconds.");
-                }
-                connectionTimeoutInMs = (int) (timeoutInMs - ellapsedTime);
-            }
-            finally {
-                if (socket != null) try {
-                    socket.close();
-                }
-                catch (IOException e) {
-                    listener.error(ExceptionUtils.getStackTrace(e));
-                }
-            }
-        while (!connectionSuccessful);
-    }
-
-    private static class WaitZAPInitCallable implements FileCallable<Void> {
-
-        private static final long serialVersionUID = 1L;
-
-        private BuildListener listener;
-        private ZAP zaproxy;
-
-        public WaitZAPInitCallable(BuildListener listener, ZAP zaproxy) {
-            this.listener = listener;
-            this.zaproxy = zaproxy;
-        }
-
-        @Override
-        public Void invoke(File f, VirtualChannel channel) {
-            zaproxy.waitForSuccessfulConnectionToZap(listener);
-            return null;
-        }
-
-        @Override
-        public void checkRoles(RoleChecker checker) throws SecurityException {
-            /* N/A */ }
     }
 }

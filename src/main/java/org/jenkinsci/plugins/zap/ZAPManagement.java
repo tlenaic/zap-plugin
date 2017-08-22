@@ -136,135 +136,13 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         return s;
     }
 
-    private String retrieveZapHomeWithToolInstall(AbstractBuild<?, ?> build, BuildListener listener) throws IOException, InterruptedException {
-        EnvVars env = null;
-        Node node = null;
-        String installPath = null;
-        if (getAutoInstall()) {
-            env = build.getEnvironment(listener);
-            node = build.getBuiltOn();
-            for (ToolDescriptor<?> desc : ToolInstallation.all())
-                for (ToolInstallation tool : desc.getInstallations())
-                    if (tool.getName().equals(getToolUsed())) {
-                        if (tool instanceof NodeSpecific) tool = (ToolInstallation) ((NodeSpecific<?>) tool).forNode(node, listener);
-                        if (tool instanceof EnvironmentSpecific) tool = (ToolInstallation) ((EnvironmentSpecific<?>) tool).forEnvironment(env);
-                        installPath = tool.getHome();
-                        return installPath;
-                    }
-        }
-        else installPath = build.getEnvironment(listener).get(this.getInstallationEnvVar());
-        return installPath;
-    }
-
-    /**
-     * Return the ZAP program name with separator prefix (\zap.bat or /zap.sh) depending of the build node and the OS.
-     *
-     * @param build
-     * @return of type String: the ZAP program name with separator prefix (\zap.bat or /zap.sh).
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    private String getZAPProgramNameWithSeparator(AbstractBuild<?, ?> build) throws IOException, InterruptedException {
-        Node node = build.getBuiltOn();
-        String zapProgramName = "";
-
-        /* Append zap program following Master/Slave and Windows/Unix */
-        if ("".equals(node.getNodeName())) { // Master
-            if (File.pathSeparatorChar == ':') zapProgramName = "/" + ZAP_PROG_NAME_SH;
-            else zapProgramName = "\\" + ZAP_PROG_NAME_BAT;
-        }
-        else if ("Unix".equals(((SlaveComputer) node.toComputer()).getOSDescription())) zapProgramName = "/" + ZAP_PROG_NAME_SH;
-        else zapProgramName = "\\" + ZAP_PROG_NAME_BAT;
-        return zapProgramName;
-    }
-
-    /**
-     * Verify parameters of the build setup are correct (null, empty, negative ...)
-     *
-     * @param build
-     * @param listener
-     *            of type BuildListener: the display log listener during the Jenkins job execution.
-     * @throws InterruptedException
-     * @throws IOException
-     * @throws Exception
-     *             throw an exception if a parameter is invalid.
-     */
-    private void checkParams(AbstractBuild<?, ?> build, BuildListener listener) throws IllegalArgumentException, IOException, InterruptedException {
-        zapProgram = retrieveZapHomeWithToolInstall(build, listener);
-        Utils.loggerMessage(listener, 0, "[{0}] PLUGIN VALIDATION (PLG), VARIABLE VALIDATION AND ENVIRONMENT INJECTOR EXPANSION (EXP)", Utils.ZAP);
-
-        if (this.zapProgram == null || this.zapProgram.isEmpty()) throw new IllegalArgumentException("ZAP INSTALLATION DIRECTORY IS MISSING, PROVIDED [ " + this.zapProgram + " ]");
-        else Utils.loggerMessage(listener, 1, "ZAP INSTALLATION DIRECTORY = [ {0} ]", this.zapProgram);
-    }
-
-/*
-    public Proc startZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher) throws IllegalArgumentException, IOException, InterruptedException {
-        Utils.loggerMessage(listener, 0, "Utils gogi got in");
-
-        zapHost=this.getHost();
-        zapPort = this.getPort();
-        checkParams(build, listener);
-
-        FilePath ws = build.getWorkspace();
-        if (ws == null) {
-            Node node = build.getBuiltOn();
-            if (node == null) throw new NullPointerException("No such build node: " + build.getBuiltOnStr());
-            throw new NullPointerException("No workspace from node " + node + " which is computer " + node.toComputer() + " and has channel " + node.getChannel());
-        }
-
-        /* Contains the absolute path to ZAP program * /
-        FilePath zapPathWithProgName = new FilePath(ws.getChannel(), zapProgram + getZAPProgramNameWithSeparator(build));
-        Utils.loggerMessage(listener, 0, "[{0}] CONFIGURE RUN COMMANDS for [ {1} ]", Utils.ZAP, zapPathWithProgName.getRemote());
-
-        listener.getLogger().println("my action host:" + zapHost);
-
-        /* Command to start ZAProxy with parameters * /
-        List<String> cmd = new ArrayList<String>();
-        cmd.add(zapPathWithProgName.getRemote());
-        cmd.add(CMD_LINE_DAEMON);
-        cmd.add(CMD_LINE_HOST);
-        cmd.add(zapHost);
-        cmd.add(CMD_LINE_PORT);
-        cmd.add(Integer.toString(zapPort));
-        cmd.add(CMD_LINE_CONFIG);
-        cmd.add(CMD_LINE_API_KEY + "=" + API_KEY);
-
-         /* Set the default directory used by ZAP if it's defined and if a scan is provided * /
-        if (this.getHomeDir() != null && !this.getHomeDir().isEmpty()) {
-            cmd.add(CMD_LINE_DIR);
-            cmd.add(this.getHomeDir());
-        }
-        /* Adds command line arguments if it's provided * /
-        if (!this.commandLineArgs.isEmpty()) addZapCmdLine(cmd,this.getCommandLineArgs());
-
-
-        EnvVars envVars = build.getEnvironment(listener);
-        /* on Windows environment variables are converted to all upper case, but no such conversions are done on Unix, so to make this cross-platform, convert variables to all upper cases. * /
-
-        /* JDK choice * /
-        computeJdkToUse(build, listener, envVars);
-
-        /* Launch ZAP process on remote machine (on master if no remote machine) * /
-        Utils.loggerMessage(listener, 0, "[{0}] EXECUTE LAUNCH COMMAND", Utils.ZAP);
-        Proc proc = launcher.launch().cmds(cmd).envs(envVars).stdout(listener).pwd(workDir).start();
-
-        /* Call waitForSuccessfulConnectionToZap(int, BuildListener) remotely * /
-        Utils.lineBreak(listener);
-        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ START ]", Utils.ZAP);
-        build.getWorkspace().act(new WaitZAPManagementInitCallable(listener, this));
-        Utils.lineBreak(listener);
-        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ SUCCESSFUL ]", Utils.ZAP);
-        Utils.lineBreak(listener);
-        return proc;
-    } */
-
     public Proc startZAP(AbstractBuild<?, ?> build, BuildListener listener, Launcher launcher) throws IllegalArgumentException, IOException, InterruptedException {
         System.out.println("");
         System.out.println("INITIATING POST BUILD");
         System.out.println("");
         System.out.println("");
 
-        if (this.buildStatus == false){
+        if (!this.buildStatus){
             Utils.loggerMessage(listener, 0, "[{0}] WE GOT FALSE SO WE BREAK", Utils.ZAP);
             System.out.println("WE GOT FALSE SO WE BREAK");
             return null;
@@ -287,52 +165,18 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         /*
          * Launch ZAP process on remote machine (on master if no remote machine)
          */
-        return zap.launch();
-    }
+        Proc proc = zap.launch();
 
-    /**
-     * Set the JDK to use to start ZAP.
-     *
-     * @param build
-     * @param listener
-     *            of type BuildListener: the display log listener during the Jenkins job execution.
-     * @param env
-     *            of type EnvVars: list of environment variables. Used to set the path to the JDK.
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    private void computeJdkToUse(AbstractBuild<?, ?> build, BuildListener listener, EnvVars env) throws IOException, InterruptedException {
-        JDK jdkToUse = getJdkToUse(build.getProject());
-        if (jdkToUse != null) {
-            Computer computer = Computer.currentComputer();
-            /* just in case we are not in a build */
-            if (computer != null) jdkToUse = jdkToUse.forNode(computer.getNode(), listener);
-            jdkToUse.buildEnvVars(env);
-        }
-    }
 
-    /**
-     * @return JDK to be used with this project.
-     */
-    private JDK getJdkToUse(AbstractProject<?, ?> project) {
-        JDK jdkToUse = Jenkins.getInstance().getJDK("InheritFromJob");
-        if (jdkToUse == null) jdkToUse = project.getJDK();
-        return jdkToUse;
-    }
+        /* Call waitForSuccessfulConnectionToZap(int, BuildListener) remotely */
+        Utils.lineBreak(listener);
+        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ START ]", Utils.ZAP);
+        build.getWorkspace().act(new WaitZAPManagementInitCallable(listener, this));
+        Utils.lineBreak(listener);
+        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ SUCCESSFUL ]", Utils.ZAP);
+        Utils.lineBreak(listener);
 
-    /**
-     * Add list of command line to the list in param
-     *
-     * @param list
-     *            of type List<String>: the list to attach ZAP command line to.
-     * @param cmdList
-     *            of type ArrayList<ZAPCmdLine>: the list of ZAP command line options and their values.
-     */
-    private void addZapCmdLine(List<String> list, ArrayList<ZAPCmdLine> cmdList) {
-        for (ZAPCmdLine zapCmd : cmdList) {
-            if (zapCmd.getCmdLineOption() != null && !zapCmd.getCmdLineOption().isEmpty()) list.add(zapCmd.getCmdLineOption());
-            if (zapCmd.getCmdLineValue() != null && !zapCmd.getCmdLineValue().isEmpty()) list.add(zapCmd.getCmdLineValue());
-        }
+        return proc;
     }
 
     /**
@@ -411,22 +255,23 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
 
         try {
             if (buildSuccess) {
-                    /* LOAD SESSION */
-                    /*
-                     * @class org.zaproxy.clientapi.gen.Core
-                     *
-                     * @method loadSession
-                     *
-                     * @param String apikey
-                     * @param String name
-                     *
-                     * @throws ClientApiException
-                     */
+                /* LOAD SESSION */
+                /*
+                 * @class org.zaproxy.clientapi.gen.Core
+                 *
+                 * @method loadSession
+                 *
+                 * @param String apikey
+                 * @param String name
+                 *
+                 * @throws ClientApiException
+                 */
+                Utils.loggerMessage(listener, 0, "[{0}] Loading session : {1}", Utils.ZAP, this.getSessionFilePath());
                 clientApi.core.loadSession(this.getSessionFilePath());
 
                 /* SETUP THRESHOLDING */
                 Utils.lineBreak(listener);
-                buildResult = ManageThreshold( listener, clientApi, this.hThresholdValue, this.hSoftValue, this.mThresholdValue, this.mSoftValue, this.lThresholdValue, this.lSoftValue, this.iThresholdValue, this.iSoftValue, this.cumulValue);
+                buildResult = manageThreshold( listener, clientApi, this.hThresholdValue, this.hSoftValue, this.mThresholdValue, this.mSoftValue, this.lThresholdValue, this.lSoftValue, this.iThresholdValue, this.iSoftValue, this.cumulValue);
 
             }
         }
@@ -450,7 +295,7 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
     }
 
     /**
-     * ManageThreshold define build value failed, pass , unstable.
+     * manageThreshold define build value failed, pass , unstable.
      *
      * @param listener
      *            of type BuildListener: the display log listener during the Jenkins job execution.
@@ -477,60 +322,61 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
      *
      */
 
-    private Result ManageThreshold(BuildListener listener,ClientApi clientApi, int hThresholdValue, int hSoftValue, int mThresholdValue, int  mSoftValue, int lThresholdValue, int lSoftValue, int iThresholdValue, int iSoftValue, int cumulValue) throws ClientApiException, IOException {
+    private Result manageThreshold(BuildListener listener,ClientApi clientApi, int hThresholdValue, int hSoftValue, int mThresholdValue, int  mSoftValue, int lThresholdValue, int lSoftValue, int iThresholdValue, int iSoftValue, int cumulValue) throws ClientApiException, IOException {
 
         Utils.lineBreak(listener);
-        Utils.loggerMessage(listener, 0, "-------------------------------------------------------", Utils.ZAP);
-        Utils.loggerMessage(listener, 0, "START : COMPUTE THRESHOLD", Utils.ZAP);
+        Utils.loggerMessage(listener, 0, "[{0}] -------------------------------------------------------", Utils.ZAP);
+        Utils.loggerMessage(listener, 0, "[{0}] START : COMPUTE THRESHOLD", Utils.ZAP);
         Result buildResult = Result.SUCCESS;
 
         Utils.lineBreak(listener);
         int nbAlertHigh = countAlertbySeverity(clientApi, "High");
-        Utils.loggerMessage(listener, 1, "ALERTS High COUNT [ {1} ]", Utils.ZAP, Integer.toString(nbAlertHigh));
+        Utils.loggerMessage(listener, 1, "[{0}] ALERTS High COUNT [ {1} ]", Utils.ZAP, Integer.toString(nbAlertHigh));
 
         int nbAlertMedium = countAlertbySeverity(clientApi, "Medium");
-        Utils.loggerMessage(listener, 1, "ALERTS Medium COUNT [ {1} ]", Utils.ZAP, Integer.toString(nbAlertMedium));
+        Utils.loggerMessage(listener, 1, "[{0}] ALERTS Medium COUNT [ {1} ]", Utils.ZAP, Integer.toString(nbAlertMedium));
 
         int nbAlertLow = countAlertbySeverity(clientApi, "Low");
         //setLowAlert(nbAlertLow);
-        Utils.loggerMessage(listener, 1, "ALERTS Low COUNT [ {1} ]", Utils.ZAP, Integer.toString(nbAlertLow));
+        Utils.loggerMessage(listener, 1, "[{0}] ALERTS Low COUNT [ {1} ]", Utils.ZAP, Integer.toString(nbAlertLow));
 
         int nbAlertInfo =countAlertbySeverity(clientApi, "Informational");
-        Utils.loggerMessage(listener, 1, "ALERTS Informational COUNT [ {1} ]", Utils.ZAP, Integer.toString(nbAlertInfo));
+        Utils.loggerMessage(listener, 1, "[{0}] ALERTS Informational COUNT [ {1} ]", Utils.ZAP, Integer.toString(nbAlertInfo));
 
         int hScale = computeProduct(hThresholdValue,nbAlertHigh);
         int mScale = computeProduct(mThresholdValue,nbAlertMedium);
         int lScale = computeProduct(lThresholdValue,nbAlertLow);
         int iScale = computeProduct(iThresholdValue,nbAlertInfo);
 
-        Utils.loggerMessage(listener, 0, "----- COMPUTED / SOFT THRESHOLD -----", Utils.ZAP);
-        Utils.loggerMessage(listener, 1, "High [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale), Integer.toString(hSoftValue));
-        Utils.loggerMessage(listener, 1, "Medium [ {1} / {2} ]", Utils.ZAP, Integer.toString(mScale), Integer.toString(mSoftValue));
-        Utils.loggerMessage(listener, 1, "Low [ {1} / {2} ]", Utils.ZAP, Integer.toString(lScale), Integer.toString(lSoftValue));
-        Utils.loggerMessage(listener, 1, "Informational [ {1} / {2} ]", Utils.ZAP, Integer.toString(iScale), Integer.toString(iSoftValue));
-        Utils.loggerMessage(listener, 1, "Cumulative [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale+mScale+lScale+iScale), Integer.toString(cumulValue));
+        Utils.lineBreak(listener);
+        Utils.loggerMessage(listener, 1, "[{0}] ----- COMPUTED / SOFT THRESHOLD -----", Utils.ZAP);
+        Utils.loggerMessage(listener, 2, "[{0}] High [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale), Integer.toString(hSoftValue));
+        Utils.loggerMessage(listener, 2, "[{0}] Medium [ {1} / {2} ]", Utils.ZAP, Integer.toString(mScale), Integer.toString(mSoftValue));
+        Utils.loggerMessage(listener, 2, "[{0}] Low [ {1} / {2} ]", Utils.ZAP, Integer.toString(lScale), Integer.toString(lSoftValue));
+        Utils.loggerMessage(listener, 2, "[{0}] Informational [ {1} / {2} ]", Utils.ZAP, Integer.toString(iScale), Integer.toString(iSoftValue));
+        Utils.loggerMessage(listener, 2, "[{0}] Cumulative [ {1} / {2} ]", Utils.ZAP, Integer.toString(hScale+mScale+lScale+iScale), Integer.toString(cumulValue));
         Utils.lineBreak(listener);
 
-        if((mScale > mSoftValue) || (lScale > lSoftValue ) || (iScale > iSoftValue)) {
-            Utils.loggerMessage(listener, 0, "###########################################", Utils.ZAP);
-            Utils.loggerMessage(listener, 0, "# ONE OR MORE SOFT THRESHOLD HAS BEEN HIT #", Utils.ZAP);
-            Utils.loggerMessage(listener, 0, "#       BUILD IS MARKED AS UNSTABLE       #", Utils.ZAP);
-            Utils.loggerMessage(listener, 0, "###########################################", Utils.ZAP);
+
+        if((hScale > hSoftValue) || ((hScale+mScale+lScale+iScale)> cumulValue)) {
+            Utils.loggerMessage(listener, 1, "[{0}] ##################################################", Utils.ZAP);
+            Utils.loggerMessage(listener, 1, "[{0}] # HIGH OR CUMULATIVE SOFT THRESHOLD HAS BEEN HIT #", Utils.ZAP);
+            Utils.loggerMessage(listener, 1, "[{0}] #           BUILD IS MARKED AS FAILED            #", Utils.ZAP);
+            Utils.loggerMessage(listener, 1, "[{0}] ##################################################", Utils.ZAP);
+            Utils.lineBreak(listener);
+            buildResult = Result.FAILURE;
+        } else if((mScale > mSoftValue) || (lScale > lSoftValue ) || (iScale > iSoftValue)) {
+            Utils.loggerMessage(listener, 1, "[{0}] ###########################################", Utils.ZAP);
+            Utils.loggerMessage(listener, 1, "[{0}] # ONE OR MORE SOFT THRESHOLD HAS BEEN HIT #", Utils.ZAP);
+            Utils.loggerMessage(listener, 1, "[{0}] #       BUILD IS MARKED AS UNSTABLE       #", Utils.ZAP);
+            Utils.loggerMessage(listener, 1, "[{0}] ###########################################", Utils.ZAP);
             Utils.lineBreak(listener);
             buildResult = Result.UNSTABLE;
         }
-        if((hScale > hSoftValue) || ((hScale+mScale+lScale+iScale)> cumulValue)) {
-            Utils.loggerMessage(listener, 0, "##################################################", Utils.ZAP);
-            Utils.loggerMessage(listener, 0, "# HIGH OR CUMULATIVE SOFT THRESHOLD HAS BEEN HIT #", Utils.ZAP);
-            Utils.loggerMessage(listener, 0, "#           BUILD IS MARKED AS FAILED            #", Utils.ZAP);
-            Utils.loggerMessage(listener, 0, "##################################################", Utils.ZAP);
-            Utils.lineBreak(listener);
-            buildResult = Result.FAILURE;
-        }
 
 
-        Utils.loggerMessage(listener, 0, "END : COMPUTING THRESHOLD", Utils.ZAP);
-        Utils.loggerMessage(listener, 0, "-------------------------------------------------------", Utils.ZAP);
+        Utils.loggerMessage(listener, 0, "[{0}] END : COMPUTING THRESHOLD", Utils.ZAP);
+        Utils.loggerMessage(listener, 0, "[{0}] -------------------------------------------------------", Utils.ZAP);
 
         return  buildResult;
 
@@ -545,9 +391,7 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
      *            of type Integer.
      */
     public int computeProduct(int a, int b){
-        int res;
-        res = a * b;
-        return res;
+        return a * b;
     }
 
     /**
@@ -611,16 +455,16 @@ public class ZAPManagement extends AbstractDescribableImpl<ZAPManagement> implem
         private static final long serialVersionUID = 1L;
 
         private BuildListener listener;
-        private ZAPManagement zaproxy;
+        private ZAPManagement zapManagement;
 
-        public WaitZAPManagementInitCallable(BuildListener listener, ZAPManagement zaproxy) {
+        public WaitZAPManagementInitCallable(BuildListener listener, ZAPManagement zapManagement) {
             this.listener = listener;
-            this.zaproxy = zaproxy;
+            this.zapManagement = zapManagement;
         }
 
         @Override
         public Void invoke(File f, VirtualChannel channel) {
-            zaproxy.waitForSuccessfulConnectionToZap(listener);
+            zapManagement.waitForSuccessfulConnectionToZap(listener);
             return null;
         }
 
