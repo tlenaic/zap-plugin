@@ -155,7 +155,35 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
         if (installationDir == null || installationDir.isEmpty())
             throw new IllegalArgumentException("ZAP INSTALLATION DIRECTORY IS MISSING, PROVIDED [ " + installationDir + " ]");
         else
-            Utils.loggerMessage(listener, 1, "ZAP INSTALLATION DIRECTORY = [ {0} ]", installationDir);
+            Utils.loggerMessage(listener, 1, "[{0}] ZAP INSTALLATION DIRECTORY = [ {1} ]", Utils.ZAP, installationDir);
+    }
+
+    /**
+     * Stop ZAP if it has been previously started.
+     *
+     * @param listener
+     *            of type BuildListener: the display log listener during the Jenkins job execution.
+     * @param clientApi
+     *            of type ClientApi: the ZAP client API to call method.
+     * @throws ClientApiException
+     */
+   static void stopZAP(BuildListener listener, ClientApi clientApi) throws ClientApiException {
+        if (clientApi != null) {
+            Utils.lineBreak(listener);
+            Utils.loggerMessage(listener, 0, "[{0}] SHUTDOWN [ START ]", Utils.ZAP);
+            Utils.lineBreak(listener);
+            /**
+             * @class ApiResponse org.zaproxy.clientapi.gen.Core
+             *
+             * @method shutdown
+             *
+             * @param String apikey
+             *
+             * @throws ClientApiException
+             */
+            clientApi.core.shutdown();
+        }
+        else Utils.loggerMessage(listener, 0, "[{0}] SHUTDOWN [ ERROR ]", Utils.ZAP);
     }
 
     public List<String> getCommand() {
@@ -240,41 +268,9 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
         return this.envVars;
     }
 
-    public Proc launch () throws IOException, InterruptedException {
 
-        System.out.println();
-        printMap(getEnvVars());
-        System.out.println();
-
-        setCommand();
-
-        FilePath workDir = new FilePath(getWorkspace().getChannel(), getInstallationDir());
-
-        Utils.loggerMessage(listener, 0, "[{0}] EXECUTE LAUNCH COMMAND", Utils.ZAP);
-        Proc proc = launcher.launch().cmds(getCommand()).envs(envVars).stdout(listener).pwd(workDir).start();
-
-        /* Call waitForSuccessfulConnectionToZap(int, BuildListener) remotely */
-        Utils.lineBreak(listener);
-        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ START ]", Utils.ZAP);
-        build.getWorkspace().act(new WaitZAPInitCallable(listener, this));
-        Utils.lineBreak(listener);
-        Utils.loggerMessage(listener, 0, "[{0}] INITIALIZATION [ SUCCESSFUL ]", Utils.ZAP);
-        Utils.lineBreak(listener);
-        return proc;
-
-    }
-
-    private void printMap(Map mp) {
-        Iterator it = mp.entrySet().iterator();
-        while (it.hasNext()) {
-            Map.Entry pair = (Map.Entry) it.next();
-            System.out.println(pair.getKey() + " = " + pair.getValue());
-            it.remove(); // avoids a ConcurrentModificationException
-        }
-    }
-
-    private void waitForSuccessfulConnectionToZap(BuildListener listener) {
-        Utils.loggerMessage(listener, 0, "[{0}] timeout is [ SUCCESSFUL ]", Integer.toString(timeout));
+    static void waitForSuccessfulConnectionToZap(BuildListener listener, int timeout, String evaluatedZapHost, int evaluatedZapPort) {
+        Utils.loggerMessage(listener, 0, "[{0}] Waiting for connection", Utils.ZAP);
         int timeoutInMs = (int) TimeUnit.SECONDS.toMillis(timeout);
         int connectionTimeoutInMs = timeoutInMs;
         int pollingIntervalInMs = (int) TimeUnit.SECONDS.toMillis(1);
@@ -284,7 +280,7 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
         do
             try {
                 socket = new Socket();
-                socket.connect(new InetSocketAddress(host, port), connectionTimeoutInMs);
+                socket.connect(new InetSocketAddress(evaluatedZapHost, evaluatedZapPort), connectionTimeoutInMs);
                 connectionSuccessful = true;
             }
             catch (SocketTimeoutException ignore) {
@@ -318,28 +314,31 @@ public class ZAP extends AbstractDescribableImpl<ZAP> implements Serializable {
                 }
             }
         while (!connectionSuccessful);
+        Utils.loggerMessage(listener, 0, "[{0}] Connection established", Utils.ZAP);
     }
 
-    private static class WaitZAPInitCallable implements FileCallable<Void> {
+    public Proc launch () throws IOException, InterruptedException {
 
-        private static final long serialVersionUID = 1L;
+        System.out.println();
+        printMap(getEnvVars());
+        System.out.println();
 
-        private BuildListener listener;
-        private ZAP zaproxy;
+        setCommand();
 
-        public WaitZAPInitCallable(BuildListener listener, ZAP zaproxy) {
-            this.listener = listener;
-            this.zaproxy = zaproxy;
+        FilePath workDir = new FilePath(getWorkspace().getChannel(), getInstallationDir());
+
+        Utils.loggerMessage(listener, 0, "[{0}] EXECUTE LAUNCH COMMAND", Utils.ZAP);
+
+        return launcher.launch().cmds(getCommand()).envs(envVars).stdout(listener).pwd(workDir).start();
+
+    }
+
+    private void printMap(Map mp) {
+        Iterator it = mp.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+            System.out.println(pair.getKey() + " = " + pair.getValue());
+            it.remove(); // avoids a ConcurrentModificationException
         }
-
-        @Override
-        public Void invoke(File f, VirtualChannel channel) {
-            zaproxy.waitForSuccessfulConnectionToZap(listener);
-            return null;
-        }
-
-        @Override
-        public void checkRoles(RoleChecker checker) throws SecurityException {
-            /* N/A */ }
     }
 }
